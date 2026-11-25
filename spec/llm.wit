@@ -1,0 +1,12 @@
+package caf:llm@1.0.0;
+
+/// caf-abi core-module lowering, NOT Component Model canonical string ABI.
+/// JSON protocol caf:llm/v1. Buffer sizes: request <=32768, response =131072.
+/// Return bytes written or -1 (no side effect when buffers/budget are invalid).
+interface host {
+  exchange: func(request-ptr: u32, request-len: u32, response-ptr: u32, response-capacity: u32) -> s32;
+}
+
+world llm-client {
+  import host;
+}

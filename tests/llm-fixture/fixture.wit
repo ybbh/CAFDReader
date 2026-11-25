@@ -1,0 +1,30 @@
+package caf:doc@1.0.0-draft.1;
+
+/// Document capability: table of contents, segment fetch, paging window, in-book search.
+/// All complex values are packed per caf-abi (this profile uses UTF-8 JSON encoding).
+interface doc {
+  llm-discover: func() -> string;
+  llm-test: func(request: string) -> string;
+  /// Bibliographic info: { title, author, note, volumes, segments, quality }
+  info: func() -> string;
+
+  /// TOC tree: [{ ref, title, level, children? }] (flat list; level is the depth)
+  toc: func() -> string;
+
+  /// Fetch one segment: { ref, volume, heading, genre, original, notes[], prev, next }
+  get: func(ref: string) -> string;
+
+  /// JSON array of count consecutive segments from start (paging window, continues across volumes)
+  window: func(start: string, count: u32) -> string;
+
+  /// In-book substring search: { hits: [{ ref, heading, snippet, count }], total }
+  search: func(query: string, max-results: u32) -> string;
+  /// In-document entry lookup; content and sources are declared by the document.
+  lookup: func(word: string) -> string;
+  entity: func(id: string) -> string;
+}
+
+world cafd-reader {
+  import caf:llm/host@1.0.0;
+  export doc;
+}

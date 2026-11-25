@@ -1,0 +1,19 @@
+name = "CAFD LLM fixture"
+version = "0.1.0"
+interfaces = ["../../spec/llm.wit", "fixture.wit"]
+[execution]
+profile = "caf-x1"
+deterministic = false
+[policy]
+llm = "caf:llm@1"
+[[payloads]]
+name = "main"
+root = "payload"
+[[components]]
+name = "cafd"
+world = "caf:doc/cafd-reader@1.0.0-draft.1"
+path = "../../build/llm-fixture.wasm"
+capabilities = ["caf:doc@1"]
+access = ["/"]
+[components.build]
+command = "mkdir -p ../../build && rustc --edition=2021 --crate-type=cdylib --target=wasm32-unknown-unknown -C opt-level=z -C panic=abort -C strip=symbols component.rs -o ../../build/llm-fixture.wasm"

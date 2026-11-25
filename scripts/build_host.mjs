@@ -5,7 +5,7 @@ import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 const root=new URL('../',import.meta.url),out=new URL('dist-host/',root),stage=new URL(`build/host-stage-${process.pid}/`,root),backup=new URL(`build/host-previous-${process.pid}/`,root);
 await mkdir(stage,{recursive:true});
-const files=['index.html','shelf.js','about.js','about.css','i18n.js','platform.js','platform/browser.js','platform/native.js','reader/index.html','reader/reader.css','reader/reader.js','reader/app-protocol.js','reader/caf.js','reader/caf.worker.js'];
+const files=['ai/protocol.js','ai/service.js','ai/ui.js','ai/ai.css','index.html','shelf.js','about.js','about.css','i18n.js','platform.js','platform/browser.js','platform/native.js','reader/index.html','reader/reader.css','reader/reader.js','reader/app-protocol.js','reader/caf.js','reader/caf.worker.js'];
 try{
  for(const file of files){const destination=new URL(file,stage);await mkdir(new URL('./',destination),{recursive:true});await cp(new URL('web/'+file,root),destination);}
  await mkdir(new URL('books/',stage),{recursive:true});await writeFile(new URL('books/catalog.json',stage),'[]\n');

@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {openCaf} from '../web/reader/caf.js';
+import {Mailbox} from '../web/ai/protocol.js';
+import {AIService,verifyReceipt} from '../web/ai/service.js';
+const artifact=await openCaf(new Uint8Array(await readFile(new URL('../build/llm-fixture.cafd',import.meta.url))));
+const service=new AIService({consent:async()=> 'once',transport:async()=>Response.json({message:{content:'经过真实 WASM 调用的答案'},prompt_eval_count:7,eval_count:9})});
+service.configure('local',{url:'http://localhost:11434',model:'fixture-model'});
+const mail=new Mailbox(({id,request,cancel})=>{if(cancel)service.cancel(artifact.rootHash,cancel);else service.generate({root:artifact.rootHash,component:'cafd',id,request}).then(result=>mail.complete(id,result));});
+const comp=await artifact.instantiate('cafd',v=>mail.exchange(v));
+const call=value=>comp.callPacked('llm-test',JSON.stringify(value));
+assert.equal((await comp.callPacked('info')).title,'AI 能力验收夹具');
+assert.deepEqual((await call({op:'discover'})).backends,[]);
+const request={op:'submit',model_hint:'auto',prompt:'测试',max_tokens:64,temperature:0};
+assert.equal((await call(request)).status,'unavailable');
+mail.announce(service.announcements());assert.equal((await call({op:'discover'})).backends[0].model,'fixture-model');
+let result=await call(request);const id=result.id;assert.equal(result.status,'pending');
+for(let i=0;i<100&&result.status==='pending';i++){await new Promise(r=>setTimeout(r,5));result=await call({op:'poll',id});}
+assert.equal(result.status,'completed');assert.ok(await verifyReceipt(result.receipt));assert.equal(result.receipt.root_hash,artifact.rootHash);assert.equal(result.text,'经过真实 WASM 调用的答案');
+const undeclared=structuredClone(artifact.manifest);delete artifact.manifest.policy.llm;
+await assert.rejects(()=>artifact.instantiate('cafd'),/undeclared import/);
+artifact.manifest=undeclared;artifact.manifest.policy.llm='caf:llm@9';await assert.rejects(()=>artifact.instantiate('cafd'),/Unsupported LLM/);
+console.log('PASS Real CAF fixture: verified container → WASM import → mediated task → signed receipt → guest result; undeclared/version denial');

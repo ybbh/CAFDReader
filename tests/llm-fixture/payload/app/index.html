@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hans">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 能力验收</title>
+<style>
+body{font:18px/1.6 system-ui;padding:16px;max-width:780px;margin:auto}button,textarea{font:inherit;margin:8px 0;padding:10px;box-sizing:border-box}textarea{display:block;width:100%}button{margin-right:12px;min-height:44px}pre{white-space:pre-wrap;overflow-wrap:anywhere}#status{padding:12px;background:#f4ecd8;border-radius:6px}#answer{white-space:pre-wrap}details{margin-top:20px}summary{cursor:pointer}
+</style>
+<h1>AI 能力验收夹具</h1>
+<p>此演示没有知识库，不提供诗句引用。</p>
+<p>首次使用：在<strong>本页上方</strong>的“设置与帮助 → AI 模型”中选择模型，点击“连接测试 / 预热”。成功后关闭设置，直接在下方提问。刷新或打开新页面后需重新配置。</p>
+<p id="status" role="status">正在连接阅读器…</p>
+<label for="question">问题</label>
+<textarea id="question">请回复：连接成功</textarea>
+<button id="ask" disabled>提问</button><button id="cancel" disabled>取消</button>
+<div id="answer"></div>
+<details><summary>调用详情</summary><pre id="result">正在连接</pre></details>
+<script>
+let port,next=1,task=null;const pending=new Map();
+const ask=document.getElementById('ask'),cancel=document.getElementById('cancel');
+function show(value){
+  document.getElementById('result').textContent=JSON.stringify(value,null,2);
+  const messages={unavailable:'当前页面尚无可用模型。请在本页“设置与帮助 → AI 模型”中选择模型，并点击“应用配置”或“连接测试 / 预热”；然后关闭设置，直接重试提问。其他页面的配置不会带到这里。',pending:'正在等待授权或模型回答…',completed:'回答完成。可展开宿主的 AI 调用记录查看 receipt。',denied:'本次未获授权，没有向模型发送问题。可再次提问并选择“仅本次”。',cancelled:'本次提问已取消。',limit:'调用达到限制，请等待当前请求完成或检查用量。',error:'模型调用失败。请在本页 AI 模型设置中进行连接测试；调用详情中可查看错误代码。',invalid:'问题或调用参数无效。'};
+  document.getElementById('status').textContent=value.status==='ready'?(value.backends.length?'模型已配置，可以提问。':messages.unavailable):messages[value.status]||'调用状态未知，请重新打开演示。';
+  document.getElementById('answer').textContent=value.status==='completed'?value.text:'';
+}
+function call(request){return new Promise((resolve,reject)=>{const id=next++;pending.set(id,{resolve,reject});port.postMessage({id,op:'call',method:'llm-test',args:[JSON.stringify(request)]});});}
+window.addEventListener('message',event=>{
+  if(event.source!==parent||event.data.type!=='caf-app-connect'||port)return;
+  port=event.ports[0];port.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.ok?p.resolve(data.value):p.reject(Error(data.error));};port.start();
+  call({op:'discover'}).then(show).catch(()=>show({status:'error'})).finally(()=>{ask.disabled=false;});
+});
+ask.onclick=async()=>{
+  ask.disabled=true;
+  try{
+    let value=await call({op:'submit',model_hint:'auto',prompt:document.getElementById('question').value,max_tokens:128,temperature:0});
+    task=value.id;cancel.disabled=value.status!=='pending';show(value);
+    while(value.status==='pending'){await new Promise(resolve=>setTimeout(resolve,100));value=await call({op:'poll',id:task});show(value);}
+  }catch{show({status:'error'});}
+  finally{task=null;cancel.disabled=true;ask.disabled=false;}
+};
+cancel.onclick=()=>{if(task)call({op:'cancel',id:task}).then(show).catch(()=>show({status:'error'}));};
+parent.postMessage({type:'caf-app-ready',protocol:'caf:doc-web@1'},'*');
+</script>
+</html>

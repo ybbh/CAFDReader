@@ -1,3 +1,4 @@
+import {createAIUI} from '../ai/ui.js';
 import {t,text} from '../i18n.js';
 // 薄宿主：打开/关闭 CAF、元信息、沙箱挂载及通用能力桥接。
 import {openCafWorker} from './caf.js';
@@ -7,11 +8,15 @@ const $=id=>document.getElementById(id);
 const decoder=new TextDecoder();
 let active=null;
 let sequence=0;
+const ai=createAIUI({currentContext:()=>active?.id,currentRoot:()=>active?.runtime?.artifact.rootHash,onChange:async backends=>{if(active?.runtime)await active.runtime.announceLLM(backends);}});
+
 
 function closeBook(message='请从书架选书，或打开本地 .cafd 文档。',values={}) {
   sequence++;platform.cancelPending();
   clearExport();
   const session=active;active=null;
+  if(session?.runtime)ai.service.close(session.runtime.artifact.rootHash);
+  ai.clear();
   if(session) {clearTimeout(session.mountTimer);if(session.port){session.port.onmessage=null;session.port.close();}session.cancel?.();session.frame?.remove();}
   $('bookFrameSlot').replaceChildren();
   $('bookMeta').replaceChildren();$('bookMetadata').hidden=true;
@@ -109,8 +114,15 @@ async function openBook(input) {
   closeBook('正在校验并打开 CAFD 文档…');
   const session={id:++sequence,input};active=session;$('btnClose').disabled=false;
   try {
-    const opening=openCafWorker(input,{component:'cafd',requiredCapability:DOCUMENT_CAPABILITY,timeout:15000});session.cancel=()=>opening.terminate();
+    const opening=openCafWorker(input,{component:'cafd',requiredCapability:DOCUMENT_CAPABILITY,timeout:15000,llmBackends:ai.service.announcements(),onLLM:async data=>{
+      if(active!==session)return {status:'cancelled'};
+      if(data.cancel){ai.service.cancel(data.root,data.cancel);return;}
+      return ai.service.generate({root:data.root,component:data.component,id:data.id,request:data.request,context:session.id});
+    }});session.cancel=()=>opening.terminate();
     session.runtime=await opening;
+    if(active!==session)return;
+    // Settings may change while the worker is opening the artifact.
+    await session.runtime.announceLLM(ai.service.announcements());
     if(active!==session)return;
     session.info=await session.runtime.callPacked('info');
     if(!session.info || typeof session.info!=='object' || session.info.error) throw new Error(session.info?.error || 'Invalid book metadata');
@@ -135,7 +147,7 @@ $('fileInput').onchange=event=>{const file=event.target.files[0];if(file)openBoo
 $('btnClose').onclick=()=>closeBook();
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{e.preventDefault();const file=e.dataTransfer.files[0];if(file)openBook(file);});
-window.addEventListener('pagehide',()=>closeBook());
+window.addEventListener('pagehide',()=>{ai.service.cancelAll();closeBook();});
 const book=new URLSearchParams(location.search).get('book');
 const library=new URLSearchParams(location.search).get('library');
 if(library) {try{await openBook(platform.source(library));}catch(error){closeBook(error.message);}}

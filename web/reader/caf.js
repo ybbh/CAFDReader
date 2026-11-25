@@ -1,3 +1,4 @@
+import {admit, Mailbox, REQUEST_MAX, RESPONSE_MAX} from '../ai/protocol.js';
 // caf.js — CAF host runtime for the browser (and Node), container format v1.
 //
 // Opens a .caf artifact LAZILY: only the boot area (header, manifest,
@@ -532,11 +533,12 @@ export class Artifact {
     while(this.#verifiedChunks.size>16)this.#verifiedChunks.delete(this.#verifiedChunks.keys().next().value);
   }
 
-  async instantiate(component) {
+  async instantiate(component, llmExchange) {
+    admit(this.manifest);
     const idx = typeof component === "number" ? component : this.components.findIndex((c) => c.ref.name === component);
     if (idx < 0) throw new Error(`component '${component}' not found`);
     const comp = this.components[idx];
-    return ComponentHandle.create(this, comp);
+    return ComponentHandle.create(this, comp, llmExchange);
   }
 }
 
@@ -552,12 +554,15 @@ function jspiAvailable() {
 }
 
 class ComponentHandle {
-  static async create(artifact, comp) {
+  static async create(artifact, comp, llmExchange) {
+    const mailbox = new Mailbox(()=>{});
+    llmExchange ||= value=>mailbox.exchange(value);
     const module = new WebAssembly.Module(comp.bytes);
     // Admission: enumerate imports and resolve against the declared policy,
     // exactly like caf-security does natively (fail-closed).
     const selfRead = artifact.manifest.policy?.self_read !== false;
     for (const imp of WebAssembly.Module.imports(module)) {
+      if (imp.module === "caf:llm/v1" && imp.name === "exchange" && artifact.manifest.policy.llm === "caf:llm@1") continue;
       if (imp.module !== "caf") throw new Error(`admission rejected: undeclared import ${imp.module}.${imp.name}`);
       if (FS_IMPORTS.has(imp.name)) {
         if (!selfRead) throw new Error(`admission rejected: caf.${imp.name} but self_read is not granted`);
@@ -695,6 +700,15 @@ class ComponentHandle {
       imports.caf[name] = fn;
     }
 
+    if (artifact.manifest.policy.llm === 'caf:llm@1') imports['caf:llm/v1'] = {exchange:(ptr,len,out,capacity)=>{
+      if(!memory || !Number.isInteger(len) || len<0 || len>REQUEST_MAX || capacity!==RESPONSE_MAX || ptr<0 || out<0 || ptr+len>memory.buffer.byteLength || out+capacity>memory.buffer.byteLength)return -1;
+      if(budget.outputUsed+len+capacity>budget.outputMax)return -1;
+      budget.outputUsed+=len+capacity;
+      let value;try{value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(memory8().slice(ptr,ptr+len)));}catch{value=null;}
+      const reply=utf8enc.encode(JSON.stringify(llmExchange?llmExchange(value):{status:'unavailable'}));
+      if(reply.length>capacity)return -1;
+      memory8().set(reply,out);return reply.length;
+    }};
     const instance = new WebAssembly.Instance(module, imports);
     memory = instance.exports.memory;
     return new ComponentHandle(artifact, instance, useJspi, () => emitted);
@@ -852,6 +866,7 @@ export async function openCaf(input) {
   // 5. Signature over the root hash (best-effort: needs WebCrypto Ed25519).
   const signature = await readSignature(source, header, directory, rootHash);
 
+  admit(manifest);
   const artifact = new Artifact(source, header, manifest, directory, components, signature);
   return artifact;
 }
@@ -935,7 +950,7 @@ export async function openComponent(input, component) {
 // rendering) belong on the main thread with trusted artifacts.
 // ---------------------------------------------------------------------------
 
-export function openCafWorker(input, { component, requiredCapability, timeout = 30000, openTimeout = 60000 } = {}) {
+export function openCafWorker(input, { component, requiredCapability, timeout = 30000, openTimeout = 60000, llmBackends = [], onLLM } = {}) {
   const worker = new Worker(new URL("./caf.worker.js", import.meta.url), { type: "module" });
   let nextId = 1;
   let dead = false;
@@ -949,6 +964,10 @@ export function openCafWorker(input, { component, requiredCapability, timeout = 
   }
   worker.onerror=e=>terminate(e.message || 'CAF worker failed');
   worker.onmessage=({data})=>{
+    if(data.op==='llm'){
+      if(dead)return;
+      Promise.resolve().then(()=>onLLM?.(data)).then(value=>{if(!dead&&data.id)worker.postMessage({op:'llmResult',id:data.id,value:value||{status:'unavailable'}});}).catch(()=>{if(!dead&&data.id)worker.postMessage({op:'llmResult',id:data.id,value:{status:'error'}});});return;
+    }
     const p=pending.get(data.id);if(!p)return;
     pending.delete(data.id);clearTimeout(p.timer);
     if(data.ok)p.resolve(data.value);else p.reject(new Error(data.error));
@@ -963,13 +982,13 @@ export function openCafWorker(input, { component, requiredCapability, timeout = 
     });
   }
   const opening=(async()=>{
-    const meta=await send('open',{source:input,component,requiredCapability});
+    const meta=await send('open',{source:input,component,requiredCapability,llmBackends});
     return {
       mode:'worker',artifact:meta,
       callPacked:(name,...args)=>send('callPacked',{name,args}),
       call:(name,...args)=>send('call',{name,args}),
       readPayload:path=>send('readPayload',{path}),
-      stats:()=>send('stats'),terminate,
+      stats:()=>send('stats'),announceLLM:backends=>send('llmAnnounce',{backends}),terminate,
     };
   })();
   opening.terminate=terminate;

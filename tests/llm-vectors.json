@@ -1,0 +1,107 @@
+[
+  {
+    "command": {
+      "op": "discover"
+    },
+    "status": "ready"
+  },
+  {
+    "command": {
+      "op": "discover",
+      "endpoint": "http://evil"
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "poll",
+      "id": 0
+    },
+    "status": "unknown"
+  },
+  {
+    "command": {
+      "op": "cancel",
+      "id": 1
+    },
+    "status": "unknown"
+  },
+  {
+    "command": {
+      "op": "poll",
+      "id": -1
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "auto",
+      "prompt": "你好",
+      "max_tokens": 64,
+      "temperature": 0
+    },
+    "status": "pending"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "cloud",
+      "prompt": "你好",
+      "max_tokens": 64,
+      "temperature": 0
+    },
+    "status": "unavailable"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "http://evil",
+      "prompt": "你好",
+      "max_tokens": 64,
+      "temperature": 0
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "auto",
+      "prompt": "",
+      "max_tokens": 64,
+      "temperature": 0
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "auto",
+      "prompt": "你好",
+      "max_tokens": 1025,
+      "temperature": 0
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "auto",
+      "prompt": "你好",
+      "max_tokens": 64,
+      "temperature": 3
+    },
+    "status": "invalid"
+  },
+  {
+    "command": {
+      "op": "submit",
+      "model_hint": "auto",
+      "prompt": "你好",
+      "max_tokens": 64,
+      "temperature": 0,
+      "key": "secret"
+    },
+    "status": "invalid"
+  }
+]

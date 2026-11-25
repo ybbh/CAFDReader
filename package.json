@@ -17,7 +17,10 @@
     "test:unit": "node scripts/test.mjs unit",
     "test:browser": "node scripts/test.mjs browser",
     "test:native": "node scripts/python.mjs scripts/test_native_reader.py",
-    "test": "npm run test:unit"
+    "test": "npm run test:unit",
+    "ai:build": "node scripts/python.mjs scripts/build_llm_fixture.py && node scripts/build_host.mjs",
+    "test:llm": "node tests/llm.spec.mjs && node tests/llm-runtime.spec.mjs",
+    "test:llm-browser": "node tests/llm-browser.spec.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.4"

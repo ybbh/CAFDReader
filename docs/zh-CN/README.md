@@ -9,3 +9,5 @@
 - [releasing.md](releasing.md) —— 阅读器如何构建、编号与发布。
 
 规范见 [`../../spec/`](../../spec) 的[规范索引](../../spec/zh-CN/README.md)。
+
+- [AI models / AI 模型](ai-models.md)

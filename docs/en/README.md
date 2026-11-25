@@ -9,3 +9,5 @@
 - [releasing.md](releasing.md) — how reader releases are built, numbered, and published.
 
 Specifications live in [`../../spec/`](../../spec) — see the [spec index](../../spec/en/README.md).
+
+- [AI models / AI 模型](ai-models.md)

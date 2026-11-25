@@ -12,3 +12,5 @@ Reading order:
 4. [version.json](../version.json) — the current spec version record.
 
 CAFD reading terminology is defined in [terminology.md](terminology.md); CAF container terms follow the CAF repository's [doc/spec/terminology.md](https://github.com/scuptio/caf/blob/main/doc/spec/terminology.md).
+
+- [LLM v1](llm-v1.md)
