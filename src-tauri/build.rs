@@ -11,6 +11,8 @@ fn main() {
             "export_json",
             "smoke_config",
             "smoke_result",
+            "ai_fetch",
+            "ai_abort",
         ]),
     ))
     .expect("Invalid cross-platform host build configuration");
