@@ -6,6 +6,7 @@
   "webviews": ["main"],
   "permissions": [
     "allow-library-list", "allow-library-remove", "allow-library-import", "allow-library-commit", "allow-opened-files",
-    "allow-personal-get", "allow-personal-set", "allow-export-json", "allow-smoke-config", "allow-smoke-result"
+    "allow-personal-get", "allow-personal-set", "allow-export-json", "allow-smoke-config", "allow-smoke-result",
+    "allow-ai-fetch", "allow-ai-abort"
   ]
 }
