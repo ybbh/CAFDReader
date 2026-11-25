@@ -9,8 +9,8 @@ const files=['ai/protocol.js','ai/service.js','ai/ui.js','ai/ai.css','index.html
 async function*walk(directory){for(const entry of await readdir(directory,{withFileTypes:true})){const path=new URL(entry.name+(entry.isDirectory()?'/':''),directory);if(entry.isDirectory()){if(entry.name!=='books'&&!entry.name.startsWith('.'))yield*walk(path);}else yield path;}}
 try{
  // web/ 下每个运行时文件都必须在清单内，防止新增模块漏打包后运行时 404。
- const listed=new Set(files),webRoot=fileURLToPath(new URL('web/',root));
- for await(const path of walk(new URL('web/',root))){const relative=fileURLToPath(path).slice(webRoot.length);if(!listed.has(relative))throw Error(`构建清单缺少 web/${relative}`);}
+ const listed=new Set(files),webRoot=new URL('web/',root).href;
+ for await(const path of walk(new URL('web/',root))){const relative=path.href.slice(webRoot.length);if(!listed.has(relative))throw Error(`构建清单缺少 web/${relative}`);}
  for(const file of files){const destination=new URL(file,stage);await mkdir(new URL('./',destination),{recursive:true});await cp(new URL('web/'+file,root),destination);}
  await mkdir(new URL('books/',stage),{recursive:true});await writeFile(new URL('books/catalog.json',stage),'[]\n');
  await build({stdin:{contents:"export {invoke,convertFileSrc} from '@tauri-apps/api/core';",resolveDir:fileURLToPath(root)},bundle:true,format:'esm',platform:'browser',outfile:fileURLToPath(new URL('native-api.js',stage))});
