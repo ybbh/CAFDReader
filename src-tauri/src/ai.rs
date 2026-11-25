@@ -201,13 +201,22 @@ fn exchange(
     }
     let host = url.host_str().ok_or("端点地址无效")?;
     let port = url.port_or_known_default().ok_or("端点地址无效")?;
-    let addr = (host, port)
+    let addrs: Vec<_> = (host, port)
         .to_socket_addrs()
         .map_err(|e| e.to_string())?
-        .next()
-        .ok_or("端点无法解析")?;
-    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(5))
-        .map_err(|e| format!("无法连接端点：{e}"))?;
+        .collect();
+    let mut stream = None;
+    let mut last_error = String::from("端点无法解析");
+    for addr in addrs {
+        match TcpStream::connect_timeout(&addr, Duration::from_secs(5)) {
+            Ok(connected) => {
+                stream = Some(connected);
+                break;
+            }
+            Err(e) => last_error = e.to_string(),
+        }
+    }
+    let mut stream = stream.ok_or_else(|| format!("无法连接端点：{last_error}"))?;
     stream
         .set_read_timeout(Some(Duration::from_secs(120)))
         .map_err(|e| e.to_string())?;
@@ -415,6 +424,17 @@ mod tests {
             format!("{text}{}", String::from_utf8_lossy(&body))
         });
         (port, handle)
+    }
+    #[test]
+    fn localhost_falls_back_between_address_families() {
+        let dir = temp_home("localhost");
+        let state = native(&dir);
+        let (port, server) = serve_once("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+        let url = url::Url::parse(&format!("http://localhost:{port}/api/tags")).unwrap();
+        let reply = exchange(&state, &url, "GET", &[], b"", "t-4").unwrap();
+        assert_eq!(reply.status, 200);
+        server.join().unwrap();
+        std::fs::remove_dir_all(&dir).ok();
     }
     #[test]
     fn post_roundtrip_and_abort() {

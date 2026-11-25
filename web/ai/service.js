@@ -49,7 +49,8 @@ export class AIService {
       if(error.message==='HTTP 403')throw Error('无法读取模型：服务返回 HTTP 403，请检查 Ollama 的 OLLAMA_ORIGINS 是否允许当前 Reader 地址');
       if(/^HTTP [1-5][0-9]{2}$/.test(error.message))throw Error(`无法读取模型：模型接口返回 ${error.message}，请检查端点和服务配置`);
       if(error.message==='模型列表格式无效'||error instanceof SyntaxError)throw Error('无法读取模型：端点未返回有效的 Ollama 模型列表，请填写 Ollama 服务根地址');
-      throw Error('无法读取模型：浏览器未能完成连接，暂不能区分服务未启动与跨域限制。请在本机终端检查 /api/tags，并确认浏览器允许本地网络访问');
+      if(error instanceof TypeError)throw Error('无法读取模型：浏览器未能完成连接，暂不能区分服务未启动与跨域限制。请在本机终端检查 /api/tags，并确认浏览器允许本地网络访问');
+      throw Error(`无法读取模型：${error.message}`);
     }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
   }
   #grantKey(root,component,tier){return `caf-ai:grant:${root}:${component}:${tier}`;}
