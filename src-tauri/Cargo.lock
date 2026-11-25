@@ -365,6 +365,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-single-instance",
  "tokio",
+ "toml 0.8.2",
  "url",
  "uuid",
  "webkit2gtk",

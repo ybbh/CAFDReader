@@ -18,6 +18,7 @@ export function createBrowserPlatform(){return {
   async get(root,key){const value=localStorage.getItem(storageKey(root,key));return value===null?null:JSON.parse(value);},
   async set(root,key,value){const k=storageKey(root,key),text=storageValue(value),prefix=`caf-app:${root}:`;if(localStorage.getItem(k)===null&&Object.keys(localStorage).filter(k=>k.startsWith(prefix)).length>=16)throw new Error('Book storage quota exceeded');localStorage.setItem(k,text);},
   async exportJSON(){return false;},
+  aiTransport(){return null;},
   async smoke(){return false;},
   async report(){}
 };}

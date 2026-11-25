@@ -66,6 +66,20 @@ initially disabled via an independent checkbox; when enabled, endpoint and model
 are required. Enter an API base such as `/v1`; Reader appends `/chat/completions`.
 An empty key only works with services permitting anonymous access.
 
+The desktop Reader bypasses the browser and the page CSP connect-src: AI
+requests are forwarded by the host process to the endpoints listed in
+`~/.cafdreader/cfg.toml`, created on first launch with these defaults:
+
+```toml
+[ai]
+endpoints = ["http://localhost:11434", "http://127.0.0.1:11434"]
+```
+
+Edits take effect immediately; no restart or rebuild is needed. The proxy only
+permits `/api/tags` and `/api/chat` under each endpoint and only plain-HTTP
+local/LAN addresses; HTTPS endpoints and the cloud tier are unavailable in the
+desktop build for now.
+
 Applying configuration does not prove connectivity. Use connection test/warmup;
 its token usage is counted. Allow persists an artifact/component/tier decision;
 once lasts for that open-book session; deny sends nothing. Revoke cancels
@@ -97,6 +111,7 @@ line belong to phase three; this phase does not demonstrate nonexistent features
 | No endpoint/key in results, announcements or exports | llm.spec | Passed |
 | Receipt signature, tampering, response hash | llm.spec / llm-runtime.spec | Passed |
 | Real container → WASM → mailbox → service → receipt | llm-runtime.spec | Passed with mock provider |
+| Desktop AI proxy: default config creation, endpoint allowlist, forwarding and abort | cargo test (src-tauri ai module) | Passed |
 | Two equal builds and caf-tool verify | build_llm_fixture.py | Passed |
 | Native CLI without provider | caf-tool run --fn llm-discover | Passed, empty list |
 | Chrome/Firefox/WebKit UI and consent dialogs | llm-browser.spec | Pending passing run |
@@ -113,9 +128,11 @@ line belong to phase three; this phase does not demonstrate nonexistent features
   spawnSync EPERM. New unit tests, the real WASM path and Rust workspace tests
   run separately. Existing assertions were not removed or weakened.
 - This execution sandbox prohibits sockets; that does not establish whether the user’s Ollama is running. The user reported a successful connection test (4064 ms) and artifact call (207 ms, 31 input / 10 output tokens). Its response hash, session signature and tamper rejection were independently checked offline. Long-answer performance, phone LAN and three-engine browser acceptance remain unverified.
-- Rust runtime has the mediated mailbox SDK. Native Reader Rust transport and
-  native-process credential isolation are not implemented. Browser isolation is
-  from the book app, not a compromised host or privileged browser extension.
+- Rust runtime has the mediated mailbox SDK. Desktop Reader AI traffic now
+  passes through a native proxy enforcing the `~/.cafdreader/cfg.toml`
+  allowlist (plain-HTTP endpoints only); native-process credential isolation is
+  still not implemented. Browser isolation is from the book app, not a
+  compromised host or privileged browser extension.
 - Receipts are session-self-signed. Digests observed at configuration time are
   not execution attestation of model weights.
 - There is no poetry index/citation verifier in phase zero. The fixture explicitly

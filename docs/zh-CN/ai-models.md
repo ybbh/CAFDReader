@@ -55,6 +55,18 @@ python3 scripts/serve_offline.py --host 0.0.0.0 --port 8612 --cert /安全位置
 通过独立复选框启用；启用后端点和模型名必填。兼容端点填写到 `/v1` 等 API 基路径，
 Reader 添加 `/chat/completions`。空密钥仅适用于服务允许匿名访问的情况。
 
+桌面版不经浏览器，也不占用页面 CSP 的 connect-src：AI 请求由宿主进程转发，
+允许的端点写在 `~/.cafdreader/cfg.toml`，首次启动自动创建，默认内容：
+
+```toml
+[ai]
+endpoints = ["http://localhost:11434", "http://127.0.0.1:11434"]
+```
+
+改动保存后立即生效，无需重启或重新打包。代理仅允许端点下的 `/api/tags`
+与 `/api/chat`，仅支持无 TLS 的本机/局域网地址；HTTPS 端点与云端档位
+在桌面版暂不可用。
+
 “应用配置”不代表连接成功；使用“连接测试 / 预热”确认，测试用量也计入统计。
 “允许”记住构件/组件/档位的决定，“仅本次”只覆盖本次打开，拒绝不发送数据。
 “撤销所有 AI 授权”同时取消在途请求。修改端点会中断现有请求。配置、密钥、端点、
@@ -83,6 +95,7 @@ Reader 添加 `/chat/completions`。空密钥仅适用于服务允许匿名访�
 | 端点/密钥不进入结果、公告、导出 | llm.spec.mjs | 通过 |
 | receipt 验签、篡改拒绝、响应哈希 | llm.spec.mjs / llm-runtime.spec.mjs | 通过 |
 | 真实容器→WASM→邮箱→服务→签名响应 | llm-runtime.spec.mjs | 通过（模拟提供方） |
+| 桌面 AI 代理：默认配置创建、端点白名单、转发与中止 | cargo test（src-tauri ai 模块） | 通过 |
 | 双次构建同哈希、caf-tool verify | build_llm_fixture.py | 通过 |
 | 构建拒绝缺声明、未知版本与矛盾 profile | llm-build.spec.py | 通过 |
 | 现有李白/Tetris 元信息与应用入口，李白目录/原文 | Node 运行时回归 | 通过，未改动原文件 |
@@ -99,7 +112,8 @@ Reader 添加 `/chat/completions`。空密钥仅适用于服务允许匿名访�
 - 原有 unit 汇总中的 reader-build-logic 子进程测试遇到 spawnSync EPERM；新功能
   单元测试、真实 WASM 链路与 Rust workspace 测试可独立运行。没有删除或放宽旧断言。
 - 本执行环境禁止建立套接字，不能据此判断用户的 Ollama 是否启动。用户已实测连接成功（4064 ms），并提供一次成功构件调用（207 ms，31 输入 / 10 输出 token）；响应哈希、会话签名及篡改拒绝已离线复核。这不是长问答性能、局域网手机或三浏览器验收。
-- 原生 Rust runtime 已有受控邮箱 SDK；原生 Reader Rust 网络代理和密钥进程隔离未实现。
+- 原生 Rust runtime 已有受控邮箱 SDK；桌面 Reader 的 AI 流量经原生代理按
+  `~/.cafdreader/cfg.toml` 白名单转发（仅 http 端点），密钥进程隔离仍未实现。
   浏览器版只承诺秘密隔离于书内应用，不能抵御宿主被攻破或有权读取页面的浏览器扩展。
 - receipt 为会话自签记录；模型 digest 为配置时观察值，不是模型权重执行证明。
 - 第零期不含诗集索引和引用核验。夹具明确声明没有可验证引用。

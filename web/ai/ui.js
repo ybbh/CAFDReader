@@ -1,4 +1,5 @@
 import {AIService} from './service.js';
+import {platform} from '../platform.js';
 function element(tag,text,attributes={}){const e=document.createElement(tag);if(text)e.textContent=text;for(const [k,v] of Object.entries(attributes))e.setAttribute(k,v);return e;}
 function button(label,handler){const b=element('button',label,{type:'button'});b.onclick=handler;return b;}
 export function createAIUI({onChange=()=>{},currentRoot=()=>null,currentContext=()=>null}={}){
@@ -74,7 +75,7 @@ export function createAIUI({onChange=()=>{},currentRoot=()=>null,currentContext=
     });
   }
   let storage;try{storage=localStorage;}catch{}
-  const service=new AIService({storage,consent,onRecord:({receipt,text,test,context})=>{
+  const service=new AIService({storage,consent,transport:platform.aiTransport?.()||undefined,onRecord:({receipt,text,test,context})=>{
     refreshUsage();if(test||receipt.root_hash!==currentRoot()||context!==currentContext())return;
     receipts.hidden=false;const record=element('details');record.append(element('summary',receipt.status==='completed'?'AI 生成 · 引用可验证（宿主未核验引用，请核对书内原文）':`AI 调用：${receipt.status}`));
     if(text)record.append(element('p',text));record.append(element('p','签名证明本会话记录的内容，不证明模型回答正确。'),element('pre',JSON.stringify(receipt,null,2)));receipts.prepend(record);while(receipts.children.length>20)receipts.lastElementChild.remove();

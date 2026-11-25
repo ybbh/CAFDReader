@@ -55,7 +55,7 @@ pub fn run() {
     let builder=builder.plugin(tauri_plugin_fs::init()).plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("cafbook",|ctx,request|crate::protocol::response(ctx.app_handle(),request,false))
         .register_uri_scheme_protocol("cafcover",|ctx,request|crate::protocol::response(ctx.app_handle(),request,true))
-        .invoke_handler(tauri::generate_handler![commands::library_list,commands::library_remove,commands::library_import,commands::library_commit,commands::opened_files,commands::personal_get,commands::personal_set,commands::export_json,commands::smoke_config,commands::smoke_result])
+        .invoke_handler(tauri::generate_handler![commands::library_list,commands::library_remove,commands::library_import,commands::library_commit,commands::opened_files,commands::personal_get,commands::personal_set,commands::export_json,commands::smoke_config,commands::smoke_result,crate::ai::ai_fetch,crate::ai::ai_abort])
         .setup(|app|{
             #[cfg(desktop)]
             let (mut pending,mut smoke,mut data)=(Vec::new(),None,None);
@@ -73,7 +73,8 @@ pub fn run() {
             }
             let store=Store::new(data.unwrap_or(app.path().app_data_dir()?)).map_err(std::io::Error::other)?;
             let token=uuid::Uuid::new_v4().to_string();
-            app.manage(Native{store:Mutex::new(store),token:token.clone(),pending:Mutex::new(pending),smoke});
+            app.manage(Native{store:Mutex::new(store),token:token.clone(),pending:Mutex::new(pending),smoke,ai_streams:Mutex::new(std::collections::HashMap::new())});
+            if let Ok(home)=app.path().home_dir(){let _=crate::ai::prepare(&home);}
             // 令牌只注入可信顶层；书内 iframe 即便看到原生 IPC 也不能调用命令。
             let init=format!("Object.defineProperty(window,'__CAF_NATIVE_SESSION__',{{value:{},writable:false}});",serde_json::to_string(&token)?);
             let window=WebviewWindowBuilder::new(app,"main",WebviewUrl::App("index.html".into()));

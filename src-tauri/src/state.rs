@@ -1,5 +1,5 @@
 use crate::storage::{Result, Store};
-use std::{path::PathBuf, sync::Mutex};
+use std::{collections::HashMap, net::TcpStream, path::PathBuf, sync::Mutex};
 use tauri_plugin_fs::FilePath;
 
 pub(crate) struct Native {
@@ -7,6 +7,7 @@ pub(crate) struct Native {
     pub(crate) token: String,
     pub(crate) pending: Mutex<Vec<FilePath>>,
     pub(crate) smoke: Option<Smoke>,
+    pub(crate) ai_streams: Mutex<HashMap<String, TcpStream>>,
 }
 pub(crate) struct Smoke {
     pub(crate) output: PathBuf,

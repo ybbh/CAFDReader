@@ -1,6 +1,7 @@
 import {t} from '../i18n.js';
 import {openCafWorker} from '../reader/caf.js';
 import {storageKey,storageValue,DOCUMENT_CAPABILITY,documentManifest} from '../reader/app-protocol.js';
+import {createNativeAITransport} from './ai-transport.js';
 
 export async function createNativePlatform(){
   const api=await import('/native-api.js');
@@ -29,6 +30,7 @@ export async function createNativePlatform(){
     async get(root,key){storageKey(root,key);return call('personal_get',{root,key});},
     async set(root,key,value){storageKey(root,key);storageValue(value);return call('personal_set',{root,key,value});},
     async exportJSON(filename,text){return call('export_json',{filename,text});},
+    aiTransport(){return createNativeAITransport(call);},
     async smoke(){return smokeStatus??=call('smoke_config');},
     async report(result){if(await this.smoke())return call('smoke_result',{result});}
   };
